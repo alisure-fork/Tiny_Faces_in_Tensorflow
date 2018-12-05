@@ -10,17 +10,16 @@ import pickle
 from argparse import ArgumentParser
 
 argparse = ArgumentParser()
-argparse.add_argument('--matlab_model_path', type=str, help='Matlab pretrained model.',
-                      default='/path/to/hr_res101.mat')
-argparse.add_argument('--weight_file_path', type=str, help='Weight file for Tensorflow.',
-                      default='/path/to/mat2tf.pkl')
+argparse.add_argument('--matlab_model_path', type=str,
+                      help='Matlab pretrained model.', default='./models/hr_res101.mat')
+argparse.add_argument('--weight_file_path', type=str,
+                      help='Weight file for Tensorflow.', default='./models/mat2tf.pkl')
 
 args = argparse.parse_args()
 
 # check arguments
-assert os.path.exists(args.matlab_model_path), \
-    "Matlab pretrained model: " + args.matlab_model_path + " not found."
-assert os.path.exists(os.path.dirname((args.weight_file_path))),\
+assert os.path.exists(args.matlab_model_path), "Matlab pretrained model: " + args.matlab_model_path + " not found."
+assert os.path.exists(os.path.dirname((args.weight_file_path))), \
     "Directory for weight file for Tensorflow: " + args.weight_file_path + " not found."
 
 mat_params_dict = {}
@@ -74,13 +73,13 @@ for k, layer in enumerate(layers):
         mat_blocks_dict[layer_name + '_stride'] = stride
         mat_blocks_dict[layer_name + '_dilate'] = dilate
         if has_bias:
-            bias = mat_params_dict[layer_name + '_bias'][0] # (1, N) -> (N,)
+            bias = mat_params_dict[layer_name + '_bias'][0]  # (1, N) -> (N,)
             mat_params_dict[layer_name + '_bias'] = bias
     elif layer_type == u'dagnn.BatchNorm':
         epsilon = layer[5][0][0][1][0][0]
-        gamma = mat_params_dict[layer_name + '_mult'][:, 0] # (N, 1) -> (N,)
-        beta = mat_params_dict[layer_name + '_bias'][:, 0] # (N, 1) -> (N,)
-        moments = mat_params_dict[layer_name + '_moments'] # (N, 2) -> (N,), (N,)
+        gamma = mat_params_dict[layer_name + '_mult'][:, 0]  # (N, 1) -> (N,)
+        beta = mat_params_dict[layer_name + '_bias'][:, 0]  # (N, 1) -> (N,)
+        moments = mat_params_dict[layer_name + '_moments']  # (N, 2) -> (N,), (N,)
         moving_mean = moments[:, 0]
         moving_var = moments[:, 1] * moments[:, 1] - epsilon
 

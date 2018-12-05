@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import pickle
 import tensorflow as tf
 import tiny_face_model
 import util
@@ -37,7 +38,7 @@ def overlay_bounding_boxes(raw_img, refined_bboxes, lw):
             _lw = int(np.ceil(_lw * _score))
 
         _r = [int(x) for x in r[:4]]
-        cv2.rectangle(raw_img, (_r[0], _r[1]), (_r[2], _r[3]), rect_color, _lw)
+        cv2.rectangle(raw_img, (_r[0] - 5, _r[1] - 5), (_r[2] + 5, _r[3] + 5), rect_color, _lw)
         pass
 
     pass
@@ -70,6 +71,8 @@ def evaluate(weight_file_path, data_dir, output_dir, prob_thresh=0.5, nms_thresh
     # main
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
+
+        _results = []
 
         for filename in filenames:
             fname = filename.split(os.sep)[-1]
@@ -157,10 +160,12 @@ def evaluate(weight_file_path, data_dir, output_dir, prob_thresh=0.5, nms_thresh
             refind_idx = sess.run(refind_idx)
             refined_bboxes = bboxes[refind_idx]
 
+            _result = []
             for r in refined_bboxes:
                 _score = expit(r[4])
                 _r = [int(x) for x in r[:4]]
                 print("{} {} {} {} {}".format(_score, _r[0], _r[1], _r[2], _r[3]))
+                _result.append([_r[0], _r[1], _r[2], _r[3], _score])
                 pass
 
             overlay_bounding_boxes(raw_img, refined_bboxes, lw)
@@ -173,8 +178,11 @@ def evaluate(weight_file_path, data_dir, output_dir, prob_thresh=0.5, nms_thresh
             # save image with bounding boxes
             raw_img = cv2.cvtColor(raw_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(output_dir, fname), raw_img)
+            _results.append(_result)
+
             pass
-        pass
+
+        return _results
 
     pass
 
@@ -199,11 +207,27 @@ def main():
     assert os.path.exists(args.output_dir), "output directory: " + args.output_dir + " not found."
     assert args.line_width >= 0, "line_width should be >= 0."
 
-    with tf.Graph().as_default():
-        evaluate(weight_file_path=args.weight_file_path, data_dir=args.data_dir, output_dir=args.output_dir,
-                 prob_thresh=args.prob_thresh, nms_thresh=args.nms_thresh, lw=args.line_width, display=args.display)
-        pass
+    videos_path = "/home/ubuntu/data1.5TB/video/video_deal/show2"
+    results_path = "/home/ubuntu/data1.5TB/video/video_deal/face"
+    videos_images_path = os.listdir(videos_path)
+    for video_images_one in videos_images_path:
 
+        video_images_path = os.path.join(videos_path, video_images_one)
+        result_images_path = os.path.join(results_path, video_images_one)
+        if not os.path.exists(result_images_path):
+            os.makedirs(result_images_path)
+
+        tf.reset_default_graph()
+        with tf.Graph().as_default():
+            results = evaluate(weight_file_path=args.weight_file_path, data_dir=video_images_path,
+                               output_dir=result_images_path, prob_thresh=args.prob_thresh,
+                               nms_thresh=args.nms_thresh, lw=args.line_width, display=args.display)
+
+            with open("{}.pkl".format(result_images_path), "wb") as f:
+                pickle.dump(results, f)
+                pass
+
+            pass
     pass
 
 
